@@ -2,6 +2,9 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.schemas.attack import GeneratedAttack
+from app.schemas.evaluation import AttackResult, EvaluationResult
+
 
 class TargetType(str, Enum):
     API = "api"
@@ -19,6 +22,7 @@ class JobCreateRequest(BaseModel):
 
     attack_categories: list[str] = Field(min_length=1)
 
+
 class JobStatus(str, Enum):
     CREATED = "created"
     GENERATING = "generating"
@@ -31,3 +35,7 @@ class JobStatus(str, Enum):
 class JobResponse(BaseModel):
     job_id: str
     status: JobStatus
+
+    attacks: list[GeneratedAttack] = Field(default_factory=list)
+    results: list[AttackResult] = Field(default_factory=list)
+    evaluations: list[EvaluationResult] = Field(default_factory=list)
