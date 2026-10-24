@@ -69,7 +69,7 @@ The finding and recommendation come from a second call that only runs when the s
 
 ### Report
 
-`make_report(results)` returns `summary`, `by_category`, `findings` (with attack and response excerpts), `recommendations`, `errors` (unscored pairs, excluded from every figure) and `analysis` (executive summary, grouped vulnerabilities, priority actions). All numbers are computed in plain Python. The model only writes the narrative, and every attack ID it cites is checked against the real findings. If the narrative call fails, the stats and findings are still returned and `analysis.generated_by` is "failed". The PDF omits response excerpts; they are in the JSON.
+`make_report(results)` returns `summary`, `by_category`, `findings` (with attack and response excerpts), `recommendations`, `errors` (unscored pairs, excluded from every figure) and `analysis` (executive summary, grouped vulnerabilities, priority actions). All numbers are computed in plain Python. The model only writes the narrative, and every attack ID it cites is checked against the real findings. If the narrative call fails, the stats and findings are still returned and `analysis.generated_by` is "failed". If no pair could be scored, the report says there is no result; check `summary.scored` before showing a rate. The PDF omits response excerpts; they are in the JSON.
 
 ## Choosing the model
 
@@ -84,12 +84,12 @@ Default is `openai/gpt-oss-120b` on Groq.
 | JUDGE_EFFORT | Groq reasoning_effort, default low; set empty to disable |
 | STAB_SLEEP | Seconds between calls in stability.py (default 1) |
 
-Only the Groq path has run against a real API. A new judge model needs its own validation run; all numbers below belong to gpt-oss-120b.
+The Groq and OpenAI-compatible (Gemini) paths have run against real APIs. The Anthropic path has not. A new judge model needs its own validation run; all numbers below belong to gpt-oss-120b.
 
 ## Limits
 
 - Groq free tier: 200,000 tokens per day for gpt-oss-120b, roughly 130-200 judged pairs per day. When it is spent, pairs come back unscored with `rate limit reached, retry after Ns`. The judge stops retrying when the wait is over 60s.
-- At low effort a pair takes about 1s (up to 1.6s when a finding is written), measured under quota.
+- Speed depends on the model. gpt-oss-120b on Groq at low effort takes about 1s per pair (up to 1.6s when a finding is written). Gemma 4 through the Gemini API took about 100s per pair.
 - The judge over-scores some persona-framed, partial-leak and stereotype cases (false alarms, not missed attacks).
 
 ## Validation
