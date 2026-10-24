@@ -5,7 +5,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import CondPageBreak, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 SEV_COLORS = {"LOW": "#2e7d32", "MEDIUM": "#f9a825", "HIGH": "#ef6c00", "CRITICAL": "#c62828"}
 SCORE_LABELS = ["safe", "partial_resistance", "soft_compliance", "compliance", "full_compliance"]
@@ -98,34 +98,49 @@ def render_pdf(report, path, target_name=None):
         for cat, note in analysis.get("category_notes", {}).items():
             story.append(_p(f"{cat}: {note}", small))
 
-    if analysis.get("vulnerabilities"):
-        story += [Spacer(1, 6 * mm), Paragraph("Vulnerabilities", styles["Heading2"])]
-        for v in analysis["vulnerabilities"]:
-            c = SEV_COLORS[v["severity"]]
+    vulns = analysis.get("vulnerabilities") or []
+    evid = ParagraphStyle("evid", parent=small, leftIndent=6 * mm)
+
+    def sev_title(item, key):
+        c = SEV_COLORS[item["severity"]]
+        return Paragraph(f'<font color="{c}"><b>[{item["severity"]}]</b></font> <b>{escape(_clean(item[key]))}</b>', body)
+
+    def evidence(f, style):
+        return [
+            _p(f"{f['attack_id']} | {f['category']} | score {f['score']}", style),
+            _p(f"Attack: {f.get('attack_prompt', '')}", style),
+            _p(f"Response: {f.get('response_excerpt', '')}", style),
+            _p(f"Reason: {f['reason']}", style),
+        ]
+
+    by_id = {f["attack_id"]: f for f in report["findings"]}
+    cited = {i for v in vulns for i in v["attack_ids"]}
+    others = [f for f in report["findings"] if f["attack_id"] not in cited]
+    if vulns:
+        story += [CondPageBreak(60 * mm), Spacer(1, 6 * mm), Paragraph("Vulnerabilities", styles["Heading2"])]
+        for v in vulns:
             story.append(KeepTogether([
-                Paragraph(f'<font color="{c}"><b>[{v["severity"]}]</b></font> <b>{escape(_clean(v["title"]))}</b>', body),
+                sev_title(v, "title"),
                 _p(f"Category: {v['category']} | Attacks: {', '.join(v['attack_ids'])}", small),
                 _p(f"What: {v['what']}", small),
                 _p(f"Where: {v['where']}", small),
                 _p(f"Fix: {v['recommendation']}", small),
-                Spacer(1, 3 * mm),
+                Spacer(1, 2 * mm),
             ]))
-
-    story += [Spacer(1, 6 * mm), Paragraph("Flagged attacks", styles["Heading2"])]
+            for i in v["attack_ids"]:
+                if i in by_id:
+                    story.append(KeepTogether(evidence(by_id[i], evid) + [Spacer(1, 2 * mm)]))
+            story.append(Spacer(1, 3 * mm))
+    if not vulns or others:
+        heading = "Other flagged attacks" if vulns else "Flagged attacks"
+        story += [CondPageBreak(60 * mm), Spacer(1, 6 * mm), Paragraph(heading, styles["Heading2"])]
     if not report["findings"]:
         msg = "No vulnerabilities found." if report["summary"]["scored"] else "Nothing was scored, so no vulnerabilities could be assessed."
         story.append(Paragraph(msg, body))
-    for f in report["findings"]:
-        c = SEV_COLORS[f["severity"]]
-        story.append(KeepTogether([
-            Paragraph(f'<font color="{c}"><b>[{f["severity"]}]</b></font> <b>{escape(_clean(f["finding"]))}</b>', body),
-            _p(f"{f['attack_id']} | {f['category']} | score {f['score']}", small),
-            _p(f"Attack: {f.get('attack_prompt', '')}", small),
-            _p(f"Response: {f.get('response_excerpt', '')}", small),
-            _p(f"Reason: {f['reason']}", small),
-            *([] if analysis.get("vulnerabilities") else [_p(f"Fix: {f['recommendation']}", small)]),
-            Spacer(1, 3 * mm),
-        ]))
+    for f in others:
+        story.append(KeepTogether(
+            [sev_title(f, "finding")] + evidence(f, small) + [_p(f"Fix: {f['recommendation']}", small), Spacer(1, 3 * mm)]
+        ))
 
     styles["Heading2"].keepWithNext = 1
     recs = report["recommendations"]
