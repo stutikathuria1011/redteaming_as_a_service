@@ -84,7 +84,9 @@ def _run(prompt, parse, model, max_retries):
         except (ValueError, KeyError, TypeError) as e:
             error = f"bad output: {e}"
         except RateLimited as e:
-            error = f"rate limit: {e}"
+            error = "rate limit reached" + (f", retry after {int(e.wait)}s" if e.wait else "")
+            if e.wait and e.wait > 60:
+                break  # daily quota is spent, waiting will not help
             time.sleep(min(e.wait, 60) if e.wait else 5 * 2 ** attempt)
         except LLMError as e:
             error = f"api error: {e}"
