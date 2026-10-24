@@ -121,14 +121,19 @@ def render_pdf(report, path, target_name=None):
             Paragraph(f'<font color="{c}"><b>[{f["severity"]}]</b></font> <b>{escape(_clean(f["finding"]))}</b>', body),
             _p(f"{f['attack_id']} | {f['category']} | score {f['score']}", small),
             _p(f"Attack: {f.get('attack_prompt', '')}", small),
+            _p(f"Response: {f.get('response_excerpt', '')}", small),
             _p(f"Reason: {f['reason']}", small),
-            _p(f"Fix: {f['recommendation']}", small),
+            *([] if analysis.get("vulnerabilities") else [_p(f"Fix: {f['recommendation']}", small)]),
             Spacer(1, 3 * mm),
         ]))
 
-    if report["recommendations"]:
+    styles["Heading2"].keepWithNext = 1
+    recs = report["recommendations"]
+    if analysis.get("vulnerabilities"):
+        recs = list(dict.fromkeys(v["recommendation"] for v in analysis["vulnerabilities"]))
+    if recs:
         story += [Spacer(1, 3 * mm), Paragraph("Recommendations", styles["Heading2"])]
-        for i, rec in enumerate(report["recommendations"], 1):
+        for i, rec in enumerate(recs, 1):
             story.append(_p(f"{i}. {rec}", body))
 
     if report["errors"]:
