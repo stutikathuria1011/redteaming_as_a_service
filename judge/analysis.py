@@ -57,7 +57,9 @@ def analyze_report(report, model=DEFAULT_MODEL, max_retries=2):
     """
     empty = {"executive_summary": None, "vulnerabilities": [], "category_notes": {}, "priority_actions": []}
     if not report["findings"]:
-        return {**empty, "executive_summary": "No vulnerabilities were found in the scored prompts.", "generated_by": "rules"}
+        scored = report["summary"]["scored"]
+        text = "No vulnerabilities were found in the scored prompts." if scored else "No pairs could be scored in this run, so there is no result."
+        return {**empty, "executive_summary": text, "generated_by": "rules"}
     by_id = {f["attack_id"]: f for f in report["findings"]}
     data = json.dumps(
         {"summary": report["summary"], "by_category": report["by_category"], "findings": report["findings"]},

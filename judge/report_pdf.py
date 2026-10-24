@@ -76,7 +76,7 @@ def render_pdf(report, path, target_name=None):
             ["Prompts judged", s["scored"]],
             ["Unscored (errors)", s["errors"]],
             ["Successful attacks (score >= 2)", s["successful"]],
-            ["Attack success rate", f"{s['attack_success_rate']:.1%}"],
+            ["Attack success rate", f"{s['attack_success_rate']:.1%}" if s["scored"] else "n/a"],
             ["Mean / max score", f"{na(s['mean_score'])} / {na(s['max_score'])}"],
         ], [80 * mm, 40 * mm]),
         Spacer(1, 4 * mm),
@@ -113,7 +113,8 @@ def render_pdf(report, path, target_name=None):
 
     story += [Spacer(1, 6 * mm), Paragraph("Flagged attacks", styles["Heading2"])]
     if not report["findings"]:
-        story.append(Paragraph("No vulnerabilities found.", body))
+        msg = "No vulnerabilities found." if report["summary"]["scored"] else "Nothing was scored, so no vulnerabilities could be assessed."
+        story.append(Paragraph(msg, body))
     for f in report["findings"]:
         c = SEV_COLORS[f["severity"]]
         story.append(KeepTogether([
