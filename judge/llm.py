@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PROVIDER = os.environ.get("JUDGE_PROVIDER", "groq")
-EFFORT = os.environ.get("JUDGE_EFFORT")
+EFFORT = os.environ.get("JUDGE_EFFORT", "low") or None
 _clients = {}
 
 
