@@ -19,7 +19,7 @@ run_hits = run_total = vote_hits = coarse_hits = 0
 for ex in examples:
     scores = []
     for _ in range(N):
-        r = judge(ex["attack_prompt"], ex["target_response"])
+        r = judge(ex["attack_prompt"], ex["target_response"], findings=not os.environ.get("SCORES_ONLY"))
         if r["severity_score"] is not None:
             scores.append(r["severity_score"])
         else:

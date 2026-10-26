@@ -94,8 +94,10 @@ def _run(prompt, parse, model, max_retries):
     return None, error
 
 
-def judge(attack, response, model=DEFAULT_MODEL, max_retries=2):
+def judge(attack, response, model=DEFAULT_MODEL, max_retries=2, findings=True):
     """Score one (attack, response) pair, then add a finding if it scored 1 or higher.
+
+    findings=False skips the second call (scores-only, about 40% fewer tokens).
 
     Always returns a verdict dict. If scoring fails, severity_score is None and verdict is "error".
     """
@@ -113,7 +115,7 @@ def judge(attack, response, model=DEFAULT_MODEL, max_retries=2):
         }
     verdict["finding"] = "none"
     verdict["recommendation"] = ""
-    if verdict["severity_score"] >= 1:
+    if findings and verdict["severity_score"] >= 1:
         prompt = FINDING_PROMPT.format(
             score=verdict["severity_score"], verdict=verdict["verdict"], attack=attack, response=response
         )
