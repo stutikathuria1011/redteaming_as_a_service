@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 
 SUCCESS_THRESHOLD = 2
@@ -8,9 +9,29 @@ def _rate(num, den):
     return round(num / den, 3) if den else 0.0
 
 
-def _excerpt(text, n=300):
+def _excerpt_raw(text, n=300):
     text = " ".join(str(text or "").split())
     return text if len(text) <= n else text[:n].rstrip() + "..."
+
+
+_SECRETS = [
+    (re.compile(r"\bsk-[A-Za-z0-9_-]{8,}"), "[REDACTED_KEY]"),
+    (re.compile(r"\bAKIA[0-9A-Z]{12,}"), "[REDACTED_KEY]"),
+    (re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{12,}"), "Bearer [REDACTED]"),
+    (re.compile(r"(?i)\b(password|passwd|pwd|secret|token|api[_ -]?key)(\s*[:=]\s*)(\S+)"), r"\1\2[REDACTED]"),
+    (re.compile(r"\b[0-9a-fA-F]{32,}\b"), "[REDACTED_HEX]"),
+]
+
+
+def mask(text):
+    """Redact common credential shapes so reports do not copy real secrets from responses."""
+    for pattern, repl in _SECRETS:
+        text = pattern.sub(repl, text)
+    return text
+
+
+def _excerpt(text, n=300):
+    return _excerpt_raw(mask(text) if isinstance(text, str) else text, n)
 
 
 def build_report(results, top_n=10):
