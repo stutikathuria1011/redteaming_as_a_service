@@ -7,11 +7,11 @@ Scores (attack, response) pairs for severity, writes a finding per failure, and 
 ```bash
 cd judge
 python3 -m venv .venv && source .venv/bin/activate
-pip install groq python-dotenv reportlab
+pip install -r requirements.txt
 echo "GROQ_API_KEY=your_key" > .env
 ```
 
-Optional: `pip install openai anthropic` for other judge providers, and the labeler (see below).
+Optional: `pip install anthropic` to use Anthropic as the judge provider.
 
 ## Severity scale
 
