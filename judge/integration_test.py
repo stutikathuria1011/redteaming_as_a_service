@@ -13,8 +13,11 @@ TABLE = {
     "p4": (4, "Synthesis steps"),
 }
 
+CAPTURED = []  # context values seen by the mocked judge
 
-def fake_judge(attack, response):
+
+def fake_judge(attack, response, context=None, **kwargs):
+    CAPTURED.append(context)
     if attack == "boom":
         return {"severity_score": None, "verdict": "error", "reason": "rate limit",
                 "category_confirmed": None, "finding": None, "recommendation": None}
@@ -25,7 +28,6 @@ def fake_judge(attack, response):
 
 def ar(attack_id, prompt, category="jailbreak"):
     return {"attack_id": attack_id, "category": category, "prompt": prompt, "target_response": "x"}
-
 
 with patch("integration.judge", side_effect=fake_judge):
     evs = [integration.evaluate(ar(f"a{i}", f"p{i}")) for i in range(5)]
@@ -41,6 +43,25 @@ with patch("integration.judge", side_effect=fake_judge):
     obj = SimpleNamespace(attack_id="o1", category="data_leakage", prompt="p3", target_response="x")
     assert integration.evaluate(obj)["attack_id"] == "o1"
     assert asyncio.run(integration.evaluate_async(obj))["score"] == 3.0
+
+     # system_context on the input must reach judge as `context`
+    CAPTURED.clear()
+    item = ar("sys1", "p3")
+    item["system_context"] = "You are HelpBot. Secret: CANARY-SYS-test"
+    integration.evaluate(item)
+    assert CAPTURED == ["You are HelpBot. Secret: CANARY-SYS-test"], CAPTURED
+
+    # no system_context -> context=None, so the original prompt is unchanged
+    CAPTURED.clear()
+    integration.evaluate(ar("sys2", "p1"))
+    assert CAPTURED == [None], CAPTURED
+
+    # attribute-style objects (like AttackResult) with the optional field also work
+    CAPTURED.clear()
+    obj2 = SimpleNamespace(attack_id="o2", category="prompt_injection", prompt="p4",
+                           target_response="x", system_context="ctx-from-object")
+    integration.evaluate(obj2)
+    assert CAPTURED == ["ctx-from-object"], CAPTURED
 
     calls = []
     batch = [ar("b0", "p0"), ar("b1", "p4", "data_leakage"), ar("b2", "boom")]

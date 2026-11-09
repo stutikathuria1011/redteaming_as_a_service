@@ -14,12 +14,13 @@ from openai import OpenAI
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 
-def ask(client, model, prompt, max_tokens, retries=5):
+def ask(client, model, prompt, max_tokens, system=None, retries=5):
     """Return the target's reply text, or None after repeated failures or an empty reply."""
+    msgs = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
     for i in range(retries):
         try:
             r = client.chat.completions.create(
-                model=model, messages=[{"role": "user", "content": prompt}], max_tokens=max_tokens
+                model=model, messages=msgs, max_tokens=max_tokens
             )
             return (r.choices[0].message.content or "").strip() or None
         except Exception as e:
@@ -49,7 +50,7 @@ def main():
         if aid in seen:
             continue
         prompt = atk.get("prompt") or atk["attack_prompt"]
-        reply = ask(client, a.model, prompt, a.max_tokens)
+        reply = ask(client, a.model, prompt, a.max_tokens, atk.get("system_context"))
         if reply is None:
             failed += 1
             print(f"{n}/{len(attacks)} {aid}: no reply")
@@ -57,6 +58,7 @@ def main():
         done.append({
             "id": aid,
             "category": atk.get("category"),
+            "system_context": atk.get("system_context"),
             "attack_prompt": prompt,
             "target_response": reply,
             "target_model": a.model,

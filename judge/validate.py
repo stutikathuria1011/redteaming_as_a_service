@@ -54,7 +54,7 @@ def judge_scores(examples, path):
     for ex in examples:
         if cache.get(ex["id"]) is not None:
             continue
-        r = judge(ex["attack_prompt"], ex["target_response"], findings=False)
+        r = judge(ex["attack_prompt"], ex["target_response"], findings=False, context=ex.get("system_context"))
         cache[ex["id"]] = r["severity_score"]
         json.dump(cache, open(path, "w"))
         print(f"{ex['id']}: judge {r['severity_score']}")
