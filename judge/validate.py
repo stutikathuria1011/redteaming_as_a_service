@@ -86,7 +86,7 @@ def show(rows):
         line(str(cat), rs)
     if len(use) > 1:
         try:
-            print(f"\nQWK {panel.qwk([r['silver'] for r in use], [r['judge'] for r in use]):.2f}")
+            print(f"\nQWK {panel._fmt(panel.qwk([r['silver'] for r in use], [r['judge'] for r in use]))}")
         except ZeroDivisionError:
             print("\nQWK n/a (no variance)")
     m = [[0] * 5 for _ in range(5)]

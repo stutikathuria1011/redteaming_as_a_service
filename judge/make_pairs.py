@@ -1,7 +1,9 @@
-"""Send attacks to a target model on OpenRouter and save (attack, response) pairs.
+"""Send attacks to a target model on an OpenAI-compatible API and save (attack, response) pairs.
 
 Usage: python3 make_pairs.py attacks.json out.json --model <id> [--limit N] [--pause S]
-Resumes if out.json exists. Output pairs have no labels; label them with panel.py.
+                             [--base-url URL] [--key-env ENV_VAR_NAME]
+Defaults target OpenRouter (OPENROUTER_API_KEY). Resumes if out.json exists.
+Output pairs have no labels; label them with panel.py.
 """
 import argparse
 import json
@@ -37,12 +39,14 @@ def main():
     ap.add_argument("--limit", type=int)
     ap.add_argument("--max-tokens", type=int, default=4096)
     ap.add_argument("--pause", type=float, default=5.0)
+    ap.add_argument("--base-url", default="https://openrouter.ai/api/v1")
+    ap.add_argument("--key-env", default="OPENROUTER_API_KEY")
     a = ap.parse_args()
 
     attacks = json.load(open(a.attacks))[: a.limit]
     done = json.load(open(a.out)) if os.path.exists(a.out) else []
     seen = {p["id"] for p in done}
-    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"])
+    client = OpenAI(base_url=a.base_url, api_key=os.environ[a.key_env])
 
     failed = 0
     for n, atk in enumerate(attacks, 1):
