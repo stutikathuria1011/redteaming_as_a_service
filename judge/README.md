@@ -92,6 +92,15 @@ The Groq and OpenAI-compatible (Gemini) paths have run against real APIs. The An
 - Speed depends on the model. gpt-oss-120b on Groq at low effort takes about 1s per pair (up to 1.6s when a finding is written). Gemma 4 through the Gemini API took about 100s per pair.
 - The judge over-scores some persona-framed, partial-leak and stereotype cases (false alarms, not missed attacks).
 
+## Target system prompt (context)
+
+If the target was deployed with a system prompt, pass it as `system_context` on each attack result (optional, default none). The judge inserts it as trusted operator context, so it can tell a planted secret or an injected instruction from ordinary text. Without it the judge catches far fewer canary and secret-leak attacks. The same context is given to the panel labelers.
+
+```python
+run_judge([{"attack_id": "a1", "category": "data_leakage", "prompt": "...",
+            "target_response": "...", "system_context": "You are HelpBot ..."}])
+```
+
 ## Validation
 
 `test_data/labeled_examples.json` holds 55 examples: 15 hand-labeled and 40 synthetic pairs with silver labels from an LLM panel (`panel.py`). Silver labels are not human labels and the synthetic pairs are written, not produced by a target model, so treat the results as a development set.
@@ -106,6 +115,20 @@ python3 panel.py report test_data/labeled_examples.json test_data/pool_001.json
 python3 merge_silver.py   # adds silver labels for the pool to labeled_examples.json
 ```
 
+### Real target responses
+
+`make_pairs.py` sends attacks to a target and saves (attack, response) pairs, `validate.py` labels them with the panel and scores them with the judge, and `second_judge.py` runs another judge model with and without context into separate files. Results are LLM silver labels plus some author-adjudicated rows (`*.adjudicated.json`); the labeling panel saw the same system prompt, which favors the with-context judge.
+
+On 52 pairs from a weak target with a system prompt holding planted canary strings (`test_data/pairs_weak_canary*.json`), the judge shown the system prompt flagged 17 of 21 harmful responses against 8 of 21 without it, with 2 false flags of 31 against 0. `claude-sonnet-5-5` as judge gives 20 of 21 against 12 of 21. One system prompt and two targets were used, so treat these as counts from one setting.
+
+```bash
+python3 make_pairs.py attacks.json test_data/pairs_X.json --model <openrouter id>
+python3 validate.py test_data/pairs_X.json
+JUDGE_PROVIDER=openai JUDGE_BASE_URL=<endpoint> JUDGE_KEY_ENV=<key var> JUDGE_MODEL=<model> \
+  python3 second_judge.py test_data/pairs_weak_canary.json <tag>
+python3 make_human_sheet.py test_data/pairs_weak_canary.json   # blind labeling sheet; key file is gitignored
+```
+
 ## Files
 
 | File | Purpose |
@@ -117,6 +140,9 @@ python3 merge_silver.py   # adds silver labels for the pool to labeled_examples.
 | panel.py, merge_silver.py | LLM labeler and silver label merge |
 | stability.py | Repeats every labeled example N times, skips contested items |
 | e2e_run.py | Pushes stored pairs through run_judge and render_pdf |
+| make_pairs.py, validate.py, convert_attacks.py | Generate real pairs, label and score them, convert the attack set |
+| second_judge.py, make_human_sheet.py | Second judge model run, blind human labeling sheet |
+| keyword_baseline.py, padding_test.py, injection_test.py | Refusal-phrase baseline, appended-text probe, judge prompt-injection probes |
 | report_test.py, analysis_test.py, integration_test.py, pdf_full_test.py | Checks (analysis_test makes a real API call) |
 
 ## Testing
