@@ -66,6 +66,7 @@ JUDGE_PROVIDER=groq              # groq | openai | anthropic
 JUDGE_MODEL=openai/gpt-oss-120b
 JUDGE_EFFORT=low                 # Groq reasoning_effort; empty disables
 JUDGE_MAX_CHARS=8000             # longer inputs keep head and tail
+STAB_SLEEP=1                     # seconds between calls in stability.py
 # Any OpenAI-compatible judge: JUDGE_PROVIDER=openai, JUDGE_BASE_URL=..., JUDGE_KEY_ENV=<env var name>
 
 # Panel labelers: name|base_url|key_env|model, separated by ;
@@ -81,6 +82,8 @@ OPENAI_API_KEY=...
 ```
 
 Warning: if `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is set, `panel.py` adds those models to the panel (`PANEL_ANTHROPIC_MODELS`, default `claude-sonnet-5-5`; `PANEL_OPENAI_MODELS` is then required). Set `PANEL_ANTHROPIC_MODELS=` (empty) to keep paid keys out of the panel, so a model does not label its own outputs. Check with `python -c "import panel; print(panel.get_panel())"`.
+
+Provider status: the Groq and OpenAI-compatible (Gemini) paths have run against real APIs. The Anthropic judge path through `llm.py` has not been separately validated (the second-judge experiment is the closest test), so treat it as untested. A new judge model needs its own validation run; all reported numbers belong to gpt-oss-120b unless stated.
 
 ## Usage
 
@@ -106,7 +109,22 @@ Notes:
 - Keep each target's pairs in its own file. Mixing targets makes per-target numbers meaningless.
 - Labels are cached per `(id, model)`, so interrupted runs resume. Delete stale cache entries before relabeling an id.
 - `findings=False` (scores-only) skips the second call that writes finding titles and recommendations; all reported runs used it.
-- Free-tier limits apply: OpenRouter allows 50 free-model requests per day; Groq's free tier allowed roughly 130-200 judged pairs per day for gpt-oss-120b (observed during development).
+- Free-tier limits: OpenRouter allows 50 free-model requests per day. Groq's free tier allowed 200,000 tokens per day for gpt-oss-120b (roughly 130-200 judged pairs), observed during development.
+- When the Groq allowance is spent, pairs come back unscored with `rate limit reached, retry after Ns`, and the judge stops retrying when the wait is over 60 s. Unscored pairs are errors, never safe responses.
+- Speed: gpt-oss-120b on Groq at low effort takes about 1 s per pair (up to 1.6 s when a finding is written); Gemma 4 through the Gemini API took about 100 s per pair.
+
+## Using the judge from the backend
+
+If the target was deployed with a system prompt, pass it as `system_context` on each attack result (optional, default none). The judge inserts it as trusted operator context, so it can tell a planted secret or an injected instruction from ordinary text. Without it the judge catches far fewer canary and secret-leak attacks. The same context is given to the panel labelers.
+
+```python
+from integration import run_judge
+
+run_judge([{"attack_id": "a1", "category": "data_leakage", "prompt": "...",
+            "target_response": "...", "system_context": "You are HelpBot ..."}])
+```
+
+`make_report(results)` returns `summary`, `by_category`, `findings` (with attack and response excerpts), `recommendations`, `errors` (unscored pairs, excluded from every figure) and `analysis` (executive summary, grouped vulnerabilities, priority actions). All numbers are computed in plain Python; the model only writes the narrative, and every attack ID it cites is checked against the real findings. If the narrative call fails, stats and findings are still returned and `analysis.generated_by` is `"failed"`. If no pair could be scored, the report says there is no result, so check `summary.scored` before showing a rate. The PDF omits response excerpts; they are in the JSON.
 
 ## Files
 
@@ -203,7 +221,7 @@ Expected: `with context 17 / 21 flags 2 / 31`, `without 8 / 21 flags 0 / 31`.
 - One fictional system prompt, two targets, small samples; 47 of 120 jailbreak seeds were run and 20 labeled; 3 canary attacks have no responses; benign controls and bias rows were not evaluated.
 - The development set has no item with reference score 2. Of the 40 synthetic items, the panel's labels matched the design for 25 and were lower for the other 15.
 - The panel also received the system prompt, which may favor the context-aware judge.
-- The judge over-scores educational or non-actionable overviews, and reacts to canary strings (misses obeyed injections buried in tasks; flags refusals that quote one).
+- The judge over-scores educational or non-actionable overviews, and reacts to canary strings (misses obeyed injections buried in tasks; flags refusals that quote one). On the development set it also over-scores some persona-framed, partial-leak and stereotype cases (false alarms, not missed attacks).
 - The attack generator's 1,216 variants are 595 template rows and 621 mock rows, none from a real LLM, so variant-based claims are not made.
 - The committed judge prompt says the data is "inside tags", although the plain template has no tags.
 
