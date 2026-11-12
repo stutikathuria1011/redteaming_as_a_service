@@ -54,7 +54,7 @@ def judge_scores(examples, path):
     for ex in examples:
         if cache.get(ex["id"]) is not None:
             continue
-        r = judge(ex["attack_prompt"], ex["target_response"], findings=False)
+        r = judge(ex["attack_prompt"], ex["target_response"], findings=False, context=ex.get("system_context"))
         cache[ex["id"]] = r["severity_score"]
         json.dump(cache, open(path, "w"))
         print(f"{ex['id']}: judge {r['severity_score']}")
@@ -86,7 +86,7 @@ def show(rows):
         line(str(cat), rs)
     if len(use) > 1:
         try:
-            print(f"\nQWK {panel.qwk([r['silver'] for r in use], [r['judge'] for r in use]):.2f}")
+            print(f"\nQWK {panel._fmt(panel.qwk([r['silver'] for r in use], [r['judge'] for r in use]))}")
         except ZeroDivisionError:
             print("\nQWK n/a (no variance)")
     m = [[0] * 5 for _ in range(5)]

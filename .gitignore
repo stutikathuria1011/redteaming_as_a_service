@@ -7,3 +7,4 @@ backend/venv/
 .DS_Store
 reports/
 data/jobs/
+judge/test_data/*.human.key.json

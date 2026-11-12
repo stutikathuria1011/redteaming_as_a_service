@@ -6,13 +6,20 @@ from judge import judge
 from report import SEVERITY_LABELS, SUCCESS_THRESHOLD, build_report
 
 
-def _get(obj, key):
-    return obj[key] if isinstance(obj, dict) else getattr(obj, key)
+def _get(obj, key, default=...):
+    """Read a field from a dict or object; with a default, a missing field returns it."""
+    if isinstance(obj, dict):
+        return obj[key] if default is ... else obj.get(key, default)
+    return getattr(obj, key) if default is ... else getattr(obj, key, default)
 
 
 def judge_pair(attack_result):
     """Judge one AttackResult (dict or object) and return its fields merged with the verdict."""
-    verdict = judge(_get(attack_result, "prompt"), _get(attack_result, "target_response"))
+    verdict = judge(
+        _get(attack_result, "prompt"),
+        _get(attack_result, "target_response"),
+        context=_get(attack_result, "system_context", None),
+    )
     return {
         "attack_id": _get(attack_result, "attack_id"),
         "category": _get(attack_result, "category"),
