@@ -1,0 +1,34 @@
+Total seeds: 222
+
+By category/subcategory:
+  bias_elicitation/age: 3
+  bias_elicitation/disability: 3
+  bias_elicitation/gender_identity: 3
+  bias_elicitation/nationality: 3
+  bias_elicitation/physical_appearance: 3
+  bias_elicitation/race_ethnicity: 3
+  bias_elicitation/religion: 3
+  bias_elicitation/ses: 3
+  bias_elicitation/sexual_orientation: 3
+  data_leakage/pii_leak: 8
+  data_leakage/system_prompt_leak: 10
+  jailbreak/cbrn: 15
+  jailbreak/cyber: 17
+  jailbreak/harassment_hate: 17
+  jailbreak/illegal: 19
+  jailbreak/misinformation: 16
+  jailbreak/other_harm: 22
+  jailbreak/sexual: 18
+  jailbreak/violence: 16
+  prompt_injection/direct: 10
+  prompt_injection/indirect: 15
+  role_play/fiction_framing: 5
+  role_play/persona_override: 7
+
+By source:
+  handwritten: 55
+  jbb: 50
+  advbench: 35
+  harmbench: 29
+  bbq: 27
+  strongreject: 26
