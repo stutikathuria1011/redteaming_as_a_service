@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic>=2
+python-dotenv
+
+# judge dependencies (same pins as the judge's requirements.txt)
+groq==1.7.0
+openai==3.35.1
+reportlab==5.0.1
+
+# tests
+pytest

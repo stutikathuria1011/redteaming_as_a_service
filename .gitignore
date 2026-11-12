@@ -1,7 +1,10 @@
 .env
-__pycache__/
+**pycache**/
 *.pyc
 node_modules/
 .venv/
+backend/venv/
 .DS_Store
+reports/
+data/jobs/
 judge/test_data/*.human.key.json
