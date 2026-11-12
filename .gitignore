@@ -5,3 +5,5 @@ node_modules/
 .venv/
 backend/venv/
 .DS_Store
+reports/
+data/jobs/
